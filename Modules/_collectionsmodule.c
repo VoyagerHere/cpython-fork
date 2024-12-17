@@ -929,9 +929,25 @@ more than once.  Previously emptied blocks are immediately reused as a
 destination block.  If a block is left-over at the end, it is freed.
 */
 
-static int
-_deque_rotate(dequeobject *deque, Py_ssize_t n)
-{
+
+static void _reverse(PyObject **objs, int start, int end) {
+  while (start < end) {
+    PyObject * temp = objs[start];
+    objs[start] = objs[end];
+    objs[end] = temp;
+    start++;
+    end--;
+  }
+}
+
+static void _deque_rotate_inplace(PyObject **objs, int k, int n) {
+  k %= n;
+  _reverse(objs, 0, n - 1);
+  _reverse(objs, 0, k - 1);
+  _reverse(objs, k, n - 1);
+}
+
+static int _deque_rotate(dequeobject *deque, Py_ssize_t n) {
     block *b = NULL;
     block *leftblock = deque->leftblock;
     block *rightblock = deque->rightblock;
@@ -951,6 +967,24 @@ _deque_rotate(dequeobject *deque, Py_ssize_t n)
     }
     assert(len > 1);
     assert(-halflen <= n && n <= halflen);
+
+    deque->state++;
+
+    /* Inplace rotate */
+    if (leftblock == rightblock) {
+      Py_ssize_t m = n;
+
+      if (m > rightindex + 1) {
+        m = rightindex + 1;
+      }
+
+      assert(m > 0 && m <= len);
+
+
+      _deque_rotate_inplace(leftblock->data + leftindex, m, rightindex - leftindex + 1);
+      rv = 0;
+      goto done;
+    }
 
     deque->state++;
     while (n > 0) {
