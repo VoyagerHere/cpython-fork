@@ -1,6 +1,7 @@
 #include "Python.h"
 #include "pycore_abstract.h"   // _PyIndex_Check()
 #include "pycore_bytes_methods.h"
+#include "str_lib_fast.h"
 
 PyDoc_STRVAR_shared(_Py_isspace__doc__,
 "B.isspace() -> bool\n\
@@ -654,8 +655,8 @@ _Py_bytes_contains(const char *str, Py_ssize_t len, PyObject *arg)
         PyErr_Clear();
         if (PyObject_GetBuffer(arg, &varg, PyBUF_SIMPLE) != 0)
             return -1;
-        pos = stringlib_find(str, len,
-                             varg.buf, varg.len, 0);
+        char *find = strstr(str, varg.buf);
+        pos = find - str;
         PyBuffer_Release(&varg);
         return pos >= 0;
     } else {
@@ -667,8 +668,7 @@ _Py_bytes_contains(const char *str, Py_ssize_t len, PyObject *arg)
             PyErr_SetString(PyExc_ValueError, "byte must be in range(0, 256)");
             return -1;
         }
-        return memchr(str, (int) ival, len) != NULL;
-
+        return memchr_fast(str, (int) ival, len) != NULL;
     }
 
     return -1;
