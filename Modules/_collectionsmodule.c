@@ -974,12 +974,9 @@ static int _deque_rotate(dequeobject *deque, Py_ssize_t n) {
     if (leftblock == rightblock) {
       Py_ssize_t m = n;
 
-      if (m > rightindex + 1) {
+      if (abs(m) > rightindex + 1) {
         m = rightindex + 1;
       }
-
-      assert(m > 0 && m <= len);
-
 
       _deque_rotate_inplace(leftblock->data + leftindex, m, rightindex - leftindex + 1);
       rv = 0;

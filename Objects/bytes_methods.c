@@ -648,8 +648,7 @@ _Py_bytes_count(const char *str, Py_ssize_t len, PyObject *sub_obj,
 int
 _Py_bytes_contains(const char *str, Py_ssize_t len, PyObject *arg)
 {
-    Py_ssize_t ival = PyNumber_AsSsize_t(arg, NULL);
-    if (ival == -1 && PyErr_Occurred()) {
+    if (PyObject_CheckBuffer(arg)) {
         Py_buffer varg;
         Py_ssize_t pos;
         PyErr_Clear();
@@ -659,13 +658,20 @@ _Py_bytes_contains(const char *str, Py_ssize_t len, PyObject *arg)
                              varg.buf, varg.len, 0);
         PyBuffer_Release(&varg);
         return pos >= 0;
-    }
-    if (ival < 0 || ival >= 256) {
-        PyErr_SetString(PyExc_ValueError, "byte must be in range(0, 256)");
-        return -1;
+    } else {
+        Py_ssize_t ival = PyNumber_AsSsize_t(arg, NULL);
+        if (ival == -1 && PyErr_Occurred()) {
+            return -1;
+        }
+        if (ival < 0 || ival >= 256) {
+            PyErr_SetString(PyExc_ValueError, "byte must be in range(0, 256)");
+            return -1;
+        }
+        return memchr(str, (int) ival, len) != NULL;
+
     }
 
-    return memchr(str, (int) ival, len) != NULL;
+    return -1;
 }
 
 

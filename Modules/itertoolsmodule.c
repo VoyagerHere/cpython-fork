@@ -2042,6 +2042,7 @@ typedef struct {
     PyObject_HEAD
     PyObject *source;                   /* Iterator over input iterables */
     PyObject *active;                   /* Currently running input iterator */
+    ssize_t it_state;
 } chainobject;
 
 static PyObject *
@@ -2057,6 +2058,7 @@ chain_new_internal(PyTypeObject *type, PyObject *source)
 
     lz->source = source;
     lz->active = NULL;
+    lz->it_state = 0;
     return (PyObject *)lz;
 }
 
@@ -2142,8 +2144,17 @@ chain_next(chainobject *lz)
             }
         }
         item = (*Py_TYPE(lz->active)->tp_iternext)(lz->active);
-        if (item != NULL)
+        if (item != NULL) {
+            lz->it_state++;
             return item;
+        } else {
+            /* first element from lz->active is empty*/
+            if(lz->it_state == 0) {
+                Py_CLEAR(lz->source);
+                Py_CLEAR(lz->active);
+                return NULL;
+            }
+        }
         if (PyErr_Occurred()) {
             if (PyErr_ExceptionMatches(PyExc_StopIteration))
                 PyErr_Clear();
@@ -2199,6 +2210,7 @@ chain_setstate(chainobject *lz, PyObject *state)
     Py_XSETREF(lz->source, source);
     Py_XINCREF(active);
     Py_XSETREF(lz->active, active);
+    lz->it_state = 0;
     Py_RETURN_NONE;
 }
 
